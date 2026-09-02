@@ -95,12 +95,15 @@ if(NOT WIN32)
   endif()
 endif()
 if(MSVC)
-  target_compile_options(blackhole_render PRIVATE /W3 /utf-8 /MP)
+  # Host-compiler-only flags; nvcc must not see them (it treats /W3 as an input file).
+  target_compile_options(blackhole_render PRIVATE
+    $<$<COMPILE_LANGUAGE:C,CXX>:/W3 /utf-8 /MP>)
   # Wallpaper process should not pop a console window in Release.
   set_target_properties(blackhole_render PROPERTIES
     LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
 else()
-  target_compile_options(blackhole_render PRIVATE -Wall -Wextra -Wno-unused-parameter)
+  target_compile_options(blackhole_render PRIVATE
+    $<$<COMPILE_LANGUAGE:C,CXX>:-Wall -Wextra -Wno-unused-parameter>)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -117,7 +120,7 @@ if(BH_ENABLE_CUDA)
     CUDA_STANDARD 17 CUDA_SEPARABLE_COMPILATION OFF CUDA_RESOLVE_DEVICE_SYMBOLS ON)
   target_link_libraries(blackhole_render PRIVATE CUDA::cudart_static)
   target_compile_options(blackhole_render PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr -Xcudafe --diag_suppress=20012>)
+    $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr -Xcudafe --diag_suppress=20012 -Wno-deprecated-gpu-targets>)
   if(NOT WIN32)
     # cuda_gl_interop.h wants <GL/gl.h>; use the glcorearb-based stub if Mesa headers are absent.
     find_path(BH_SYSTEM_GL_H GL/gl.h)
