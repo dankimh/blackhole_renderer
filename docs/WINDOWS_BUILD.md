@@ -83,10 +83,19 @@ Stop a `--wallpaper` instance from Task Manager or with `taskkill /im blackhole_
 
 ## Lively Wallpaper
 
-1. Copy `build-win\Release\` (exe + shaders + json files + assets) into a folder.
-2. In Lively: **Add wallpaper -> select `LivelyInfo.json`** (or drag the folder). `Type` is `0`
-   (application); Lively launches `blackhole_render.exe --lively`, waits for the main
-   window and re-parents it behind the desktop icons.
+1. The build output folder (`build-win-v143\Release\`) already contains everything:
+   exe, `shaders\`, `LivelyInfo.json`, `LivelyProperties.json`, `thumbnail.jpg`, `preview.jpg`.
+2. Zip the *contents* of that folder (LivelyInfo.json must be at the zip root):
+   ```powershell
+   Compress-Archive -Path build-win-v143\Release\* -DestinationPath blackhole_wallpaper.zip -Force
+   ```
+   In Lively: **Add wallpaper -> browse -> pick `blackhole_wallpaper.zip`**. Lively unpacks it,
+   reads `LivelyInfo.json` (`Type 0` = application, `Arguments --lively`) and launches
+   `blackhole_render.exe --lively`, waits for the main window and re-parents it behind the
+   desktop icons.
+   Alternative without a zip: Add wallpaper -> browse -> pick `blackhole_render.exe` directly
+   (Lively creates its own entry; the exe then runs without `--lively`, which still works
+   because `globalMouse` defaults to true - only the stdin IPC and thumbnail are missing).
 3. Enable **Settings -> Wallpaper -> Input forwarding** if you want cursor parallax /
    particles while another window has focus. The app also polls the OS cursor itself
    (`globalMouse` property), so this is optional.

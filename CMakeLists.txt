@@ -149,6 +149,9 @@ add_custom_target(blackhole_render_assets ALL
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
           ${CMAKE_CURRENT_SOURCE_DIR}/LivelyProperties.json
           ${CMAKE_CURRENT_SOURCE_DIR}/LivelyInfo.json
+          ${CMAKE_CURRENT_SOURCE_DIR}/License.txt
+          ${CMAKE_CURRENT_SOURCE_DIR}/assets/thumbnail.jpg
+          ${CMAKE_CURRENT_SOURCE_DIR}/assets/preview.jpg
           $<TARGET_FILE_DIR:blackhole_render>
   COMMENT "Copying shaders and Lively metadata next to the executable")
 add_dependencies(blackhole_render_assets blackhole_render)

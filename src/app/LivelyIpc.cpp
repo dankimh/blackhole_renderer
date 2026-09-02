@@ -55,16 +55,23 @@ void LivelyIpc::start() {
     running_ = true;
     thread_ = std::thread([this] {
         std::string line;
+        size_t received = 0;
         while (running_ && std::getline(std::cin, line)) {
             IpcMessage m = parse(line);
+            if (m.type == IpcType::unknown && m.raw.is_null()) continue;   // blank line
+            ++received;
             std::lock_guard<std::mutex> lock(mutex_);
             queue_.push(std::move(m));
         }
-        // stdin closed: Lively died -> ask the app to quit.
-        if (running_) {
+        // stdin closed. Lively's application-wallpaper host never attaches stdin, so an
+        // immediate EOF is normal; only treat EOF as "host died" after a real conversation.
+        if (running_ && received > 0) {
+            LOG_INFO("IPC: stdin closed after %zu messages - shutting down", received);
             IpcMessage m; m.type = IpcType::terminate;
             std::lock_guard<std::mutex> lock(mutex_);
             queue_.push(m);
+        } else if (running_) {
+            LOG_INFO("IPC: stdin not connected (no host messages) - continuing without IPC");
         }
     });
     thread_.detach();   // blocked in getline; process exit tears it down

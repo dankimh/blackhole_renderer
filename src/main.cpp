@@ -6,6 +6,11 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include "util/File.h"
+#ifdef _WIN32
+#include <windows.h>
+#include <io.h>
+#endif
 
 using namespace bh;
 
@@ -37,12 +42,23 @@ static void usage() {
         "  --set name=value        override any LivelyProperties.json value (repeatable)\n"
         "  --validation            GL debug output / Vulkan validation layers\n"
         "  --log debug|info|warn\n"
+        "  --log-file PATH         mirror log to a file (default in --lively/--wallpaper: <exe dir>\\blackhole_render.log)\n"
         "Lively player arguments (--wallpaper-property, --wallpaper-geometry, ...) are accepted.\n",
         BH_VERSION);
 }
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+    // Release builds use /SUBSYSTEM:WINDOWS; when started from a console, attach to it so
+    // --help and log output are visible.
+    if (AttachConsole(ATTACH_PARENT_PROCESS)) {
+        FILE* f;
+        freopen_s(&f, "CONOUT$", "w", stdout);
+        freopen_s(&f, "CONOUT$", "w", stderr);
+    }
+#endif
     AppOptions o;
+    std::string logFile;
     auto next = [&](int& i) -> std::string {
         if (i + 1 >= argc) { LOG_ERROR("Missing value for %s", argv[i]); std::exit(2); }
         return argv[++i];
@@ -86,6 +102,7 @@ int main(int argc, char** argv) {
             if (eq != std::string::npos) o.overrides.emplace_back(v.substr(0, eq), v.substr(eq + 1));
         }
         else if (a == "--validation") o.validation = true;
+        else if (a == "--log-file") logFile = next(i);
         else if (a == "--log") {
             std::string v = next(i);
             log::setLevel(v == "debug" ? log::Level::Debug : v == "warn" ? log::Level::Warn : log::Level::Info);
@@ -100,6 +117,10 @@ int main(int argc, char** argv) {
         else { LOG_WARN("Unknown argument: %s", a.c_str()); }
     }
     if (o.width <= 0 || o.height <= 0) { o.width = 1280; o.height = 720; }
+    if (logFile.empty() && (o.mode == WindowMode::Lively || o.mode == WindowMode::Wallpaper))
+        logFile = (file::executableDir() / "blackhole_render.log").string();
+    if (!logFile.empty() && log::setLogFile(logFile)) LOG_INFO("Logging to %s", logFile.c_str());
+    LOG_INFO("blackhole_render %s starting (mode %d)", BH_VERSION, (int)o.mode);
 
     Application app;
     if (!app.init(o)) {

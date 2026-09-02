@@ -7,6 +7,7 @@ namespace bh::log {
 enum class Level { Debug, Info, Warn, Error };
 void setLevel(Level lvl);
 void setLivelyConsole(bool enabled);   // also emit {"Type":1,"Message":..} lines for Lively
+bool setLogFile(const std::string& path); // mirror all output to a file
 void write(Level lvl, const char* fmt, ...);
 }  // namespace bh::log
 

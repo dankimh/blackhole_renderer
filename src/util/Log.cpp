@@ -6,9 +6,16 @@ namespace bh::log {
 static Level g_level = Level::Info;
 static bool g_lively = false;
 static std::mutex g_mutex;
+static FILE* g_file = nullptr;
 
 void setLevel(Level lvl) { g_level = lvl; }
 void setLivelyConsole(bool enabled) { g_lively = enabled; }
+bool setLogFile(const std::string& path) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (g_file) fclose(g_file);
+    g_file = fopen(path.c_str(), "w");
+    return g_file != nullptr;
+}
 
 static std::string jsonEscape(const char* s) {
     std::string out;
@@ -33,6 +40,7 @@ void write(Level lvl, const char* fmt, ...) {
     static const char* names[] = {"DEBUG", "INFO", "WARN", "ERROR"};
     std::lock_guard<std::mutex> lock(g_mutex);
     fprintf(stderr, "[%s] %s\n", names[(int)lvl], buf);
+    if (g_file) { fprintf(g_file, "[%s] %s\n", names[(int)lvl], buf); fflush(g_file); }
     if (g_lively) {
         // Lively MessageType.msg_console == 1 ; ConsoleMessageType: 0 log, 1 error, 2 console
         int cat = lvl == Level::Error ? 1 : 0;

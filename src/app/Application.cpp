@@ -377,7 +377,7 @@ int Application::run() {
     while (!quit_) {
         if (!headless) {
             window_.pollEvents();
-            if (window_.shouldClose()) break;
+            if (window_.shouldClose()) { LOG_INFO("Window close requested"); break; }
         }
         if (ipcMode_) processIpc();
         if (store_.pollReload()) applySettings(false);
