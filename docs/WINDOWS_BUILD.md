@@ -13,15 +13,45 @@
 
 ## Build
 
+### Option A - Ninja (recommended with VS 2026 + CUDA)
+
+Open **"x64 Native Tools Command Prompt for VS 2026"** (or *Developer PowerShell for VS
+2026*) so that `cl.exe` is on the PATH, then:
+
 ```powershell
-git clone <this repo> blackhole_render
 cd blackhole_render
-cmake --preset windows-msvc          # configure (downloads dependencies)
-cmake --build --preset windows-msvc  # Release build -> build-win\Release\blackhole_render.exe
+cmake --preset windows-ninja          # configure (downloads dependencies)
+cmake --build --preset windows-ninja  # -> build-win-ninja\blackhole_render.exe
 ```
 
-Without a CUDA toolkit use the `windows-msvc-nocuda` preset; particles then run on the
-GLSL compute shader path (visually identical, slightly slower).
+Ninja ships with Visual Studio (C++ CMake tools component); if `ninja` is not found,
+install it with `winget install Ninja-build.Ninja`. This path calls `nvcc.exe` directly and
+does not need the CUDA Visual Studio (MSBuild) integration. `-allow-unsupported-compiler`
+is passed to nvcc because CUDA 12.x releases predate the VS 2026 (v145) toolset.
+
+### Option B - Visual Studio solution
+
+```powershell
+cmake --preset windows-msvc          # generator "Visual Studio 18 2026"
+cmake --build --preset windows-msvc  # -> build-win\Release\blackhole_render.exe
+```
+
+If configure stops with **`No CUDA toolset found`**, the CUDA MSBuild integration is not
+registered for VS 2026. Fix it by copying the four `CUDA 12.x.props/targets/xml` files from
+
+```
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.x\extras\visual_studio_integration\MSBuildExtensions\
+```
+
+into
+
+```
+C:\Program Files\Microsoft Visual Studio\18\<Edition>\MSBuild\Microsoft\VC\v180\BuildCustomizations\
+```
+
+(create the folder if missing), delete `build-win\CMakeCache.txt`, and re-run the preset.
+Alternatively use Option A, or the `windows-msvc-nocuda` preset (particles then run on the
+GLSL compute shader path - visually identical, slightly slower).
 
 The post-build step copies `shaders/`, `LivelyInfo.json` and `LivelyProperties.json`
 next to the executable, so `build-win\Release\` is a self-contained wallpaper folder.
