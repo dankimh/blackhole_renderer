@@ -380,8 +380,9 @@ int Application::run() {
             if (window_.shouldClose()) { LOG_INFO("Window close requested"); break; }
         }
         if (ipcMode_) processIpc();
-        if (store_.pollReload()) applySettings(false);
-        else applySettings(false);
+        applySettings(false);
+        store_.pollReload();
+        if (opts_.mode == WindowMode::Wallpaper && (frame_ % 120) == 0) wallpaper::maintain(window_);
 
         if (paused_ && !headless) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
