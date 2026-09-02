@@ -14,6 +14,7 @@ enum class ParticleBackend { Auto, Cuda, Compute };
 
 struct RendererConfig {
     GLFWwindow* window = nullptr;    // null => headless (EGL surfaceless / VK no swapchain)
+    GLFWwindow* glContextWindow = nullptr;   // GL: window owning the context (defaults to `window`)
     int windowWidth = 1280;
     int windowHeight = 720;
     int internalWidth = 1280;        // ray-march resolution (windowSize * renderScale)

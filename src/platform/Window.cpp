@@ -21,7 +21,8 @@ bool Window::create(const WindowOptions& opts) {
         return false;
     }
     openGL_ = opts.openGL;
-    if (opts.openGL) {
+    bool glOnMain = opts.openGL && !opts.separateContext;
+    if (glOnMain) {
         glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -56,14 +57,31 @@ bool Window::create(const WindowOptions& opts) {
         auto* self = static_cast<Window*>(glfwGetWindowUserPointer(g));
         if (self && self->onResize) self->onResize(fw, fh);
     });
-    if (opts.openGL) {
+    if (glOnMain) {
         glfwMakeContextCurrent(win_);
         glfwSwapInterval(0);
+    } else if (opts.openGL) {
+        // Hidden helper window carrying the OpenGL context.
+        glfwDefaultWindowHints();
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+        ctx_ = glfwCreateWindow(64, 64, "blackhole_render GL context", nullptr, nullptr);
+        if (!ctx_) {
+            LOG_ERROR("Hidden GL context window creation failed");
+            return false;
+        }
+        glfwMakeContextCurrent(ctx_);
+        glfwSwapInterval(0);
+        LOG_INFO("Presentation window has no GL pixel format; GL context on hidden helper window");
     }
     return true;
 }
 
 void Window::destroy() {
+    if (ctx_) { glfwDestroyWindow(ctx_); ctx_ = nullptr; }
     if (win_) {
         glfwDestroyWindow(win_);
         win_ = nullptr;
@@ -76,8 +94,8 @@ bool Window::shouldClose() const { return win_ && glfwWindowShouldClose(win_); }
 void Window::requestClose() { if (win_) glfwSetWindowShouldClose(win_, GLFW_TRUE); }
 void Window::framebufferSize(int& w, int& h) const { glfwGetFramebufferSize(win_, &w, &h); }
 void Window::position(int& x, int& y) const { glfwGetWindowPos(win_, &x, &y); }
-void Window::swapBuffers() { if (openGL_) glfwSwapBuffers(win_); }
-void Window::makeContextCurrent() { if (openGL_) glfwMakeContextCurrent(win_); }
+void Window::swapBuffers() { if (openGL_ && !ctx_) glfwSwapBuffers(win_); }
+void Window::makeContextCurrent() { if (openGL_) glfwMakeContextCurrent(contextHandle()); }
 void Window::setVsync(bool on) { if (openGL_) glfwSwapInterval(on ? 1 : 0); }
 
 void* Window::nativeHandle() const {

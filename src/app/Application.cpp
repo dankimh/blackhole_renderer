@@ -73,6 +73,7 @@ bool Application::init(const AppOptions& opts) {
         wo.title = "Black Hole Wallpaper";
         wo.fullscreen = opts.mode == WindowMode::Fullscreen;
         wo.borderless = opts.mode == WindowMode::Wallpaper || opts.mode == WindowMode::Lively;
+        wo.separateContext = presentGdi_ && wo.openGL;   // layered desktop child must not carry a GL pixel format
         if (!window_.create(wo)) return false;
         if (wo.borderless) {
             int mw, mh;
@@ -95,6 +96,7 @@ bool Application::init(const AppOptions& opts) {
     renderer_ = makeRenderer(backend);
     RendererConfig rc;
     rc.window = headless ? nullptr : window_.handle();
+    rc.glContextWindow = headless ? nullptr : window_.contextHandle();
     rc.windowWidth = fbW_; rc.windowHeight = fbH_;
     rc.internalWidth = inW_; rc.internalHeight = inH_;
     rc.particleCount = s.particlesChk ? (uint32_t)s.particleCount : 0u;

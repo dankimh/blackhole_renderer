@@ -20,7 +20,7 @@ bool GLRenderer::init(const RendererConfig& cfg) {
     cfg_ = cfg;
     offscreen_ = !cfg.window || cfg.offscreenPresent;
     if (cfg.window) {
-        glfwMakeContextCurrent(cfg.window);
+        glfwMakeContextCurrent(cfg.glContextWindow ? cfg.glContextWindow : cfg.window);
         glfwSwapInterval(cfg.vsync ? 1 : 0);
         if (!gl::load((gl::GetProcFn)glfwGetProcAddress)) return false;
     } else {
