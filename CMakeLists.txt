@@ -97,7 +97,7 @@ if(NOT WIN32)
   endif()
 endif()
 if(WIN32)
-  target_link_libraries(blackhole_render PRIVATE d3d11 dxgi)
+  target_link_libraries(blackhole_render PRIVATE d3d11 dxgi dwmapi)
 endif()
 if(MSVC)
   # Host-compiler-only flags; nvcc must not see them (it treats /W3 as an input file).

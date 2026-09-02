@@ -3,6 +3,8 @@
 #include <GLFW/glfw3.h>
 #ifdef _WIN32
 #include <windows.h>
+#include <dwmapi.h>
+#pragma comment(lib, "dwmapi.lib")
 #elif defined(BH_HAS_X11)
 #define GLFW_EXPOSE_NATIVE_X11
 #include <GLFW/glfw3native.h>
@@ -51,20 +53,46 @@ static DesktopLayer findDesktopLayer() {
     return d;
 }
 
+static void describeWindow(HWND c, HWND self, int depth) {
+    wchar_t cls[64] = L"";
+    GetClassNameW(c, cls, 64);
+    char cls8[64];
+    WideCharToMultiByte(CP_UTF8, 0, cls, -1, cls8, sizeof(cls8), nullptr, nullptr);
+    RECT r{};
+    GetWindowRect(c, &r);
+    DWORD pid = 0;
+    GetWindowThreadProcessId(c, &pid);
+    char exe[64] = "?";
+    if (HANDLE hp = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid)) {
+        wchar_t path[MAX_PATH];
+        DWORD n = MAX_PATH;
+        if (QueryFullProcessImageNameW(hp, 0, path, &n)) {
+            const wchar_t* base = wcsrchr(path, L'\\');
+            WideCharToMultiByte(CP_UTF8, 0, base ? base + 1 : path, -1, exe, sizeof(exe), nullptr, nullptr);
+        }
+        CloseHandle(hp);
+    }
+    DWORD cloaked = 0;
+    DwmGetWindowAttribute(c, DWMWA_CLOAKED, &cloaked, sizeof(cloaked));
+    BYTE alpha = 0; DWORD lwaFlags = 0; COLORREF key = 0;
+    BOOL lwa = GetLayeredWindowAttributes(c, &key, &alpha, &lwaFlags);
+    LOG_INFO("%*s%p %-18s pid=%lu %-22s vis=%d cloaked=%lu ex=0x%08lx st=0x%08lx lwa=%d/a%u/f%lu rect=%ld,%ld %ldx%ld%s",
+             depth * 2, "", (void*)c, cls8, (unsigned long)pid, exe, (int)IsWindowVisible(c), (unsigned long)cloaked,
+             (unsigned long)GetWindowLongW(c, GWL_EXSTYLE), (unsigned long)GetWindowLongW(c, GWL_STYLE),
+             (int)lwa, (unsigned)alpha, (unsigned long)lwaFlags,
+             r.left, r.top, r.right - r.left, r.bottom - r.top, c == self ? "   <-- ours" : "");
+}
+
+static void dumpTree(HWND parent, HWND self, int depth) {
+    for (HWND c = GetWindow(parent, GW_CHILD); c; c = GetWindow(c, GW_HWNDNEXT)) {
+        describeWindow(c, self, depth);
+        if (depth < 2) dumpTree(c, self, depth + 1);
+    }
+}
+
 static void dumpChildren(HWND parent, HWND self) {
     LOG_INFO("Children of %p (top -> bottom):", (void*)parent);
-    for (HWND c = GetWindow(parent, GW_CHILD); c; c = GetWindow(c, GW_HWNDNEXT)) {
-        wchar_t cls[64] = L"";
-        GetClassNameW(c, cls, 64);
-        char cls8[64];
-        WideCharToMultiByte(CP_UTF8, 0, cls, -1, cls8, sizeof(cls8), nullptr, nullptr);
-        RECT r{};
-        GetWindowRect(c, &r);
-        LOG_INFO("  %p %-20s vis=%d ex=0x%08lx st=0x%08lx rect=%ld,%ld %ldx%ld%s", (void*)c, cls8,
-                 (int)IsWindowVisible(c), (unsigned long)GetWindowLongW(c, GWL_EXSTYLE),
-                 (unsigned long)GetWindowLongW(c, GWL_STYLE), r.left, r.top, r.right - r.left, r.bottom - r.top,
-                 c == self ? "   <-- ours" : "");
-    }
+    dumpTree(parent, self, 1);
 }
 
 static bool attachBottom(HWND hwnd) {
@@ -130,6 +158,19 @@ static bool attach(HWND hwnd) {
     return true;
 }
 #endif
+
+void dumpDesktop() {
+#ifdef _WIN32
+    DesktopLayer d = findDesktopLayer();
+    LOG_INFO("Desktop layer: progman=%p workerW=%p defView=%p layeredShellView=%d",
+             (void*)d.progman, (void*)d.workerW, (void*)d.defView, (int)d.layeredShellView);
+    if (d.progman) { describeWindow(d.progman, nullptr, 0); dumpChildren(d.progman, nullptr); }
+    // Classic layout: WorkerW siblings at top level that host wallpapers.
+    for (HWND w = FindWindowExW(nullptr, nullptr, L"WorkerW", nullptr); w; w = FindWindowExW(nullptr, w, L"WorkerW", nullptr)) {
+        if (GetWindow(w, GW_CHILD)) { describeWindow(w, nullptr, 0); dumpTree(w, nullptr, 1); }
+    }
+#endif
+}
 
 void setEmbedMode(int mode) {
 #ifdef _WIN32

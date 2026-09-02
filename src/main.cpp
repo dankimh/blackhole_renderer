@@ -1,6 +1,7 @@
 // Black Hole live wallpaper - entry point.
 // Structure follows rocksdanister/rain (index.html + js/script.js -> src/main.cpp + src/app/).
 #include "app/Application.h"
+#include "platform/Wallpaper.h"
 #include "util/Log.h"
 #include <cstdio>
 #include <cstdlib>
@@ -39,6 +40,7 @@ static void usage() {
         "  --global-mouse 0|1      track the OS cursor even without focus\n"
         "  --debug                 show the Dear ImGui tuning panel (rain: datUI)\n"
         "  --sim-cursor            synthetic orbiting cursor (particle demo / headless)\n"
+        "  --dump-desktop          print the desktop window tree (compare with a working Lively wallpaper)\n"
         "  --embed auto|plain|layered|bottom  --wallpaper attach method (bottom = z-order fallback)\n"
         "  --present auto|native|gdi|d3d  frame presentation (auto: d3d blt swapchain when embedded)\n"
         "  --set name=value        override any LivelyProperties.json value (repeatable)\n"
@@ -72,6 +74,7 @@ int main(int argc, char** argv) {
         else if (a == "--fullscreen") o.mode = WindowMode::Fullscreen;
         else if (a == "--wallpaper") { o.mode = WindowMode::Wallpaper; o.globalMouseOverride = 1; }
         else if (a == "--lively") { o.mode = WindowMode::Lively; o.ipc = true; o.globalMouseOverride = 1; }
+        else if (a == "--dump-desktop") { log::setLevel(log::Level::Info); bh::wallpaper::dumpDesktop(); return 0; }
         else if (a == "--headless") { o.mode = WindowMode::Headless; if (o.fixedDt <= 0.0) o.fixedDt = 1.0 / 60.0; }
         else if (a == "--dt") o.fixedDt = std::atof(next(i).c_str());
         else if (a == "--backend") {

@@ -9,6 +9,8 @@ bool embed(Window& window);
 void setEmbedMode(int mode);
 /// Call periodically in wallpaper mode: re-attaches after an explorer restart.
 bool maintain(Window& window);
+/// Log the desktop window hierarchy (Progman / WorkerW / wallpaper hosts). Windows only.
+void dumpDesktop();
 /// Remove from taskbar / alt-tab (Windows only, harmless elsewhere).
 void hideFromTaskbar(Window& window);
 /// Primary monitor size in pixels.
