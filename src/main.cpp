@@ -39,6 +39,7 @@ static void usage() {
         "  --global-mouse 0|1      track the OS cursor even without focus\n"
         "  --debug                 show the Dear ImGui tuning panel (rain: datUI)\n"
         "  --sim-cursor            synthetic orbiting cursor (particle demo / headless)\n"
+        "  --embed auto|plain|layered  --wallpaper attach method (Windows; auto picks by OS)\n"
         "  --set name=value        override any LivelyProperties.json value (repeatable)\n"
         "  --validation            GL debug output / Vulkan validation layers\n"
         "  --log debug|info|warn\n"
@@ -96,6 +97,7 @@ int main(int argc, char** argv) {
         else if (a == "--global-mouse") o.globalMouseOverride = std::atoi(next(i).c_str());
         else if (a == "--debug") o.debugUi = true;
         else if (a == "--sim-cursor") o.simCursor = true;
+        else if (a == "--embed") { std::string v = next(i); o.embedMode = v == "plain" ? 1 : v == "layered" ? 2 : 0; }
         else if (a == "--set") {
             std::string v = next(i);
             size_t eq = v.find('=');

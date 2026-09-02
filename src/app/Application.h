@@ -35,6 +35,7 @@ struct AppOptions {
     float scaleOverride = 0.f;           // --scale
     int samplesOverride = 0, stepsOverride = 0;
     int globalMouseOverride = -1;        // -1 keep setting
+    int embedMode = 0;                   // --embed auto|plain|layered
     bool simCursor = false;              // synthetic orbiting cursor (headless demos)
     double fixedDt = 0.0;                // > 0: deterministic frame step (headless default 1/60)
     std::vector<std::pair<std::string, std::string>> overrides;   // --set name=value

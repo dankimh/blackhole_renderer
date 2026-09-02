@@ -23,6 +23,7 @@ struct DesktopLayer {
     bool layeredShellView = false;   // Windows 11 24H2+: Progman has WS_EX_NOREDIRECTIONBITMAP
 };
 static HWND g_parent = nullptr;
+static int g_embedMode = 0;
 
 static DesktopLayer findDesktopLayer() {
     DesktopLayer d;
@@ -63,7 +64,9 @@ static bool attach(HWND hwnd) {
     SetWindowLongW(hwnd, GWL_STYLE, style);
 
     HWND parent;
-    if (d.layeredShellView) {
+    bool useLayered = g_embedMode == 2 || (g_embedMode == 0 && d.layeredShellView);
+    LOG_INFO("Embed mode: %s", useLayered ? "layered child of Progman" : "child of WorkerW");
+    if (useLayered) {
         // Microsoft guidance: our window must be a WS_EX_LAYERED child of Progman, z-ordered
         // below SHELLDLL_DefView (icons) and above the WorkerW that paints the static wallpaper.
         LONG ex = GetWindowLongW(hwnd, GWL_EXSTYLE) | WS_EX_LAYERED;
@@ -92,6 +95,14 @@ static bool attach(HWND hwnd) {
     return true;
 }
 #endif
+
+void setEmbedMode(int mode) {
+#ifdef _WIN32
+    g_embedMode = mode;
+#else
+    (void)mode;
+#endif
+}
 
 bool embed(Window& window) {
 #ifdef _WIN32

@@ -74,7 +74,7 @@ bool Application::init(const AppOptions& opts) {
             }
             wallpaper::hideFromTaskbar(window_);
         }
-        if (opts.mode == WindowMode::Wallpaper) wallpaper::embed(window_);
+        if (opts.mode == WindowMode::Wallpaper) { wallpaper::setEmbedMode(opts.embedMode); wallpaper::embed(window_); }
         window_.framebufferSize(fbW_, fbH_);
         window_.onResize = [this](int w, int h) { resize(w, h); };
         input_.attach(window_);
