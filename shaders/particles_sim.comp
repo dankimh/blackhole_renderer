@@ -1,0 +1,59 @@
+#version 460
+// Particle simulation (GLSL path). The CUDA kernel in src/render/cuda/CudaParticles.cu
+// implements the identical model so both backends behave the same.
+#ifdef VULKAN
+#extension GL_GOOGLE_include_directive : enable
+#endif
+#include "common/params.glsl"
+#include "common/hash.glsl"
+
+layout(local_size_x = 256) in;
+layout(std430, SET0 binding = BIND_PARTICLES) buffer ParticleBuffer { Particle particles[]; };
+
+void spawn(uint idx, inout Particle p) {
+    vec3 h = hash33(uvec3(idx, PP.frame, 0x5151u));
+    vec3 h2 = hash33(uvec3(idx, PP.frame, 0x7777u));
+    float ang = h.x * 6.2831853;
+    float rad = sqrt(h.y) * PP.spawnU.w;
+    vec3 pos = PP.spawnPos.xyz + (PP.spawnU.xyz * cos(ang) + PP.spawnV.xyz * sin(ang)) * rad;
+
+    // Circular-orbit velocity in the plane facing the camera, blended with a radial fall.
+    float r = max(length(pos), PP.rs * 1.5);
+    vec3 n = PP.planeNormal.xyz;
+    vec3 tangent = normalize(cross(n, pos));
+    float vcirc = sqrt(PP.mass / r);
+    float bias = PP.orbitBias * (0.75 + 0.5 * h2.x);
+    vec3 vel = tangent * vcirc * bias - normalize(pos) * vcirc * (0.15 + 0.3 * h2.y);
+    vel += (h2 - 0.5) * vcirc * PP.spawnV.w;         // spread
+
+    p.posLife = vec4(pos, 1.0);
+    p.velSeed = vec4(vel, h.z);
+}
+
+void main() {
+    uint idx = gl_GlobalInvocationID.x;
+    if (idx >= PP.count) return;
+    Particle p = particles[idx];
+
+    if (p.posLife.w <= 0.0) {
+        if (PP.spawnPos.w > 0.5 && hash13(uvec3(idx, PP.frame, 0x1234u)) < PP.spawnProb)
+            spawn(idx, p);
+        particles[idx] = p;
+        return;
+    }
+
+    vec3 pos = p.posLife.xyz, vel = p.velSeed.xyz;
+    float r = length(pos);
+    if (r < PP.rs * 1.02 || p.posLife.w <= 0.0) {     // swallowed
+        p.posLife.w = 0.0; particles[idx] = p; return;
+    }
+    // Paczynski-Wiita pseudo-Newtonian potential: a = -M / (r - rs)^2 r_hat
+    float d = max(r - PP.rs, 0.05);
+    vec3 acc = -PP.mass * pos / (r * d * d);
+    vel += acc * PP.dt;
+    vel *= max(0.0, 1.0 - PP.drag * PP.dt);
+    pos += vel * PP.dt;
+    p.posLife = vec4(pos, p.posLife.w - PP.dt / PP.maxLife);
+    p.velSeed.xyz = vel;
+    particles[idx] = p;
+}

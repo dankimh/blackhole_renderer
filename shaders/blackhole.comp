@@ -1,0 +1,36 @@
+#version 460
+// Ray-marched Schwarzschild black hole: gravitational lensing, accretion disk, star field.
+// GPU load scales with resolution x samples x maxSteps.
+#ifdef VULKAN
+#extension GL_GOOGLE_include_directive : enable
+#endif
+#include "common/params.glsl"
+#include "common/geodesic.glsl"
+
+layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
+layout(SET0 binding = BIND_HDR_IMAGE, rgba16f) uniform image2D hdrImage;
+
+void main() {
+    ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 res = ivec2(P.resolution.xy);
+    if (pix.x >= res.x || pix.y >= res.y) return;
+
+    vec3 right = P.camToWorld[0].xyz, up = P.camToWorld[1].xyz, fwd = P.camToWorld[2].xyz;
+    float aspect = P.camPos.w;
+    vec3 col = vec3(0.0);
+    uint ns = max(P.samples, 1u);
+    for (uint s = 0u; s < ns; ++s) {
+        vec2 jit = (ns == 1u) ? vec2(0.5) : hash23(uvec3(pix.x, pix.y, P.frame * 64u + s));
+        vec2 uv = (vec2(pix) + jit) * P.resolution.zw;
+        vec2 ndc = vec2(uv.x * 2.0 - 1.0, 1.0 - uv.y * 2.0);      // row 0 = top
+        vec3 rd = normalize(right * (ndc.x * P.tanHalfFov * aspect) + up * (ndc.y * P.tanHalfFov) + fwd);
+        col += traceGeodesic(P.camPos.xyz, rd);
+    }
+    col /= float(ns);
+
+    if (P.accumulate != 0u) {
+        vec3 prev = imageLoad(hdrImage, pix).rgb;
+        col = mix(prev, col, P.accumWeight);
+    }
+    imageStore(hdrImage, pix, vec4(col, 1.0));
+}

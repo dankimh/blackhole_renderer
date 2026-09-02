@@ -1,0 +1,40 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 22, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "windows-msvc",
+      "displayName": "Windows x64 (Visual Studio 2022, CUDA)",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build-win",
+      "cacheVariables": {
+        "BH_ENABLE_VULKAN": "ON",
+        "BH_ENABLE_CUDA": "ON",
+        "BH_ENABLE_IMGUI": "ON",
+        "CMAKE_CUDA_ARCHITECTURES": "52;61;75;86;89"
+      },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "windows-msvc-nocuda",
+      "displayName": "Windows x64 (no CUDA toolkit)",
+      "inherits": "windows-msvc",
+      "binaryDir": "${sourceDir}/build-win-nocuda",
+      "cacheVariables": { "BH_ENABLE_CUDA": "OFF" }
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Linux Release (system or conda deps)",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "windows-msvc", "configurePreset": "windows-msvc", "configuration": "Release" },
+    { "name": "windows-msvc-nocuda", "configurePreset": "windows-msvc-nocuda", "configuration": "Release" },
+    { "name": "linux-release", "configurePreset": "linux-release" }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "AppVersion": "2.0.6.1",
+  "Title": "Black Hole",
+  "Thumbnail": "assets/thumbnail.jpg",
+  "Preview": "assets/preview.jpg",
+  "Desc": "Ray-marched Schwarzschild black hole: gravitational lensing, relativistic accretion disk, star field and cursor-fed infalling particles. OpenGL compute / Vulkan / CUDA.",
+  "Author": "ywk",
+  "License": "See License.txt",
+  "Contact": "",
+  "Type": 0,
+  "FileName": "blackhole_render.exe",
+  "Arguments": "--lively",
+  "IsAbsolutePath": false
+}

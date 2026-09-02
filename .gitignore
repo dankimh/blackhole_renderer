@@ -1,0 +1,10 @@
+build/
+build-*/
+out/
+_deps/
+*.png
+*.jpg
+!assets/*.jpg
+CMakeUserPresets.json
+.vs/
+.vscode/

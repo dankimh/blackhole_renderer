@@ -1,0 +1,37 @@
+#version 460
+// mode 0: threshold + downsample (hdr -> half res)   mode 1: separable gaussian blur
+#ifdef VULKAN
+#extension GL_GOOGLE_include_directive : enable
+#endif
+#include "common/params.glsl"
+
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(SET0 binding = BIND_SRC_SAMPLER) uniform sampler2D srcTex;
+layout(SET0 binding = BIND_DST_IMAGE, rgba16f) uniform writeonly image2D dstImage;
+
+void main() {
+    ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 dst = ivec2(BP.texel.zw);
+    if (pix.x >= dst.x || pix.y >= dst.y) return;
+    vec2 uv = (vec2(pix) + 0.5) / BP.texel.zw;
+    vec3 c;
+    if (BP.dir.z < 0.5) {
+        vec2 t = BP.texel.xy;
+        c  = texture(srcTex, uv + vec2(-t.x, -t.y)).rgb;
+        c += texture(srcTex, uv + vec2( t.x, -t.y)).rgb;
+        c += texture(srcTex, uv + vec2(-t.x,  t.y)).rgb;
+        c += texture(srcTex, uv + vec2( t.x,  t.y)).rgb;
+        c *= 0.25;
+        float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+        c *= smoothstep(BP.dir.w, BP.dir.w * 2.0 + 0.5, l);
+    } else {
+        const float w[5] = float[5](0.227027, 0.1945946, 0.1216216, 0.054054, 0.016216);
+        vec2 step = BP.dir.xy * BP.texel.xy;
+        c = texture(srcTex, uv).rgb * w[0];
+        for (int i = 1; i < 5; ++i) {
+            c += texture(srcTex, uv + step * float(i)).rgb * w[i];
+            c += texture(srcTex, uv - step * float(i)).rgb * w[i];
+        }
+    }
+    imageStore(dstImage, pix, vec4(c, 1.0));
+}
