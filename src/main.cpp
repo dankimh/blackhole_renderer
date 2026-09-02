@@ -39,7 +39,7 @@ static void usage() {
         "  --global-mouse 0|1      track the OS cursor even without focus\n"
         "  --debug                 show the Dear ImGui tuning panel (rain: datUI)\n"
         "  --sim-cursor            synthetic orbiting cursor (particle demo / headless)\n"
-        "  --embed auto|plain|layered  --wallpaper attach method (Windows; auto picks by OS)\n"
+        "  --embed auto|plain|layered|bottom  --wallpaper attach method (bottom = z-order fallback)\n"
         "  --present auto|native|gdi|d3d  frame presentation (auto: d3d blt swapchain when embedded)\n"
         "  --set name=value        override any LivelyProperties.json value (repeatable)\n"
         "  --validation            GL debug output / Vulkan validation layers\n"
@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
         else if (a == "--debug") o.debugUi = true;
         else if (a == "--sim-cursor") o.simCursor = true;
         else if (a == "--present") { std::string v = next(i); o.presentMode = v == "native" ? 1 : v == "gdi" ? 2 : v == "d3d" ? 3 : 0; }
-        else if (a == "--embed") { std::string v = next(i); o.embedMode = v == "plain" ? 1 : v == "layered" ? 2 : 0; }
+        else if (a == "--embed") { std::string v = next(i); o.embedMode = v == "plain" ? 1 : v == "layered" ? 2 : v == "bottom" ? 3 : 0; }
         else if (a == "--set") {
             std::string v = next(i);
             size_t eq = v.find('=');

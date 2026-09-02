@@ -51,7 +51,40 @@ static DesktopLayer findDesktopLayer() {
     return d;
 }
 
+static void dumpChildren(HWND parent, HWND self) {
+    LOG_INFO("Children of %p (top -> bottom):", (void*)parent);
+    for (HWND c = GetWindow(parent, GW_CHILD); c; c = GetWindow(c, GW_HWNDNEXT)) {
+        wchar_t cls[64] = L"";
+        GetClassNameW(c, cls, 64);
+        char cls8[64];
+        WideCharToMultiByte(CP_UTF8, 0, cls, -1, cls8, sizeof(cls8), nullptr, nullptr);
+        RECT r{};
+        GetWindowRect(c, &r);
+        LOG_INFO("  %p %-20s vis=%d ex=0x%08lx st=0x%08lx rect=%ld,%ld %ldx%ld%s", (void*)c, cls8,
+                 (int)IsWindowVisible(c), (unsigned long)GetWindowLongW(c, GWL_EXSTYLE),
+                 (unsigned long)GetWindowLongW(c, GWL_STYLE), r.left, r.top, r.right - r.left, r.bottom - r.top,
+                 c == self ? "   <-- ours" : "");
+    }
+}
+
+static bool attachBottom(HWND hwnd) {
+    // Top-level tool window kept at the bottom of the z-order (covers desktop icons, but
+    // always composes). Fallback for desktops where Progman children are not shown.
+    int mw = GetSystemMetrics(SM_CXSCREEN), mh = GetSystemMetrics(SM_CYSCREEN);
+    LONG style = GetWindowLongW(hwnd, GWL_STYLE);
+    style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
+    style |= WS_POPUP;
+    SetWindowLongW(hwnd, GWL_STYLE, style);
+    LONG ex = GetWindowLongW(hwnd, GWL_EXSTYLE);
+    SetWindowLongW(hwnd, GWL_EXSTYLE, (ex | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE) & ~WS_EX_APPWINDOW);
+    SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, mw, mh, SWP_NOACTIVATE | SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+    g_parent = nullptr;
+    LOG_INFO("Embed mode: bottom-most top-level window (%dx%d)", mw, mh);
+    return true;
+}
+
 static bool attach(HWND hwnd) {
+    if (g_embedMode == 3) return attachBottom(hwnd);
     DesktopLayer d = findDesktopLayer();
     LOG_INFO("Desktop layer: progman=%p workerW=%p defView=%p layeredShellView=%d",
              (void*)d.progman, (void*)d.workerW, (void*)d.defView, (int)d.layeredShellView);
@@ -92,6 +125,8 @@ static bool attach(HWND hwnd) {
     SetWindowPos(hwnd, nullptr, origin.x, origin.y, mw, mh, SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED | SWP_SHOWWINDOW);
     g_parent = parent;
     LOG_INFO("Embedded window behind desktop icons (%dx%d, parent=%p)", mw, mh, (void*)parent);
+    dumpChildren(parent, hwnd);
+    if (parent != d.progman) dumpChildren(d.progman, hwnd);
     return true;
 }
 #endif
@@ -136,7 +171,12 @@ bool embed(Window& window) {
 bool maintain(Window& window) {
 #ifdef _WIN32
     HWND hwnd = (HWND)window.nativeHandle();
-    if (!hwnd || !g_parent) return true;
+    if (!hwnd) return true;
+    if (g_embedMode == 3) {   // keep it at the bottom
+        SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        return true;
+    }
+    if (!g_parent) return true;
     if (IsWindow(g_parent) && GetParent(hwnd) == g_parent) return true;
     LOG_WARN("Desktop layer changed - re-embedding");
     return attach(hwnd);

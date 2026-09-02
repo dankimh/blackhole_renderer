@@ -62,6 +62,7 @@ bool Application::init(const AppOptions& opts) {
     // Windows 11 24H2+ desktop: GPU swapchains of Progman children are never composed; push
     // frames through UpdateLayeredWindow instead (auto in wallpaper/lively modes).
     bool embedded = opts.mode == WindowMode::Wallpaper || opts.mode == WindowMode::Lively;
+    if (opts.embedMode == 3 && opts.presentMode == 0) embedded = false;   // top-level: native swap works
     useD3d_ = opts.presentMode == 3 || (opts.presentMode == 0 && embedded);
     presentGdi_ = useD3d_ || opts.presentMode == 2;
 #endif
@@ -379,6 +380,12 @@ bool Application::renderFrame() {
         int w, h;
         bool topDown;
         if (renderer_->readbackBGRA(bgra, w, h, topDown)) {
+            if (frame_ % 300 == 1) {
+                uint64_t sum = 0;
+                for (size_t i = 0; i < bgra.size(); i += 4 * 97) sum += bgra[i] + bgra[i + 1] + bgra[i + 2];
+                LOG_INFO("frame %u: %dx%d, mean brightness %.1f/255 (presenter %s)", frame_, w, h,
+                         (double)sum / (double)(bgra.size() / (4 * 97)) / 3.0, useD3d_ ? "d3d" : "gdi");
+            }
             if (useD3d_) d3d_.present(bgra.data(), w, h, topDown);
             else presenter_.present(bgra.data(), w, h, topDown);
         }

@@ -5,7 +5,7 @@ namespace bh::wallpaper {
 /// Attach the window behind the desktop icons (Windows: Progman/WorkerW trick,
 /// X11: _NET_WM_WINDOW_TYPE_DESKTOP). Returns false if unsupported.
 bool embed(Window& window);
-/// Windows only: 0 = auto (layered child of Progman on new Win11), 1 = force plain WorkerW child, 2 = force layered.
+/// Windows only: 0 = auto (layered child of Progman on new Win11), 1 = plain WorkerW child, 2 = force layered, 3 = bottom-most top-level window.
 void setEmbedMode(int mode);
 /// Call periodically in wallpaper mode: re-attaches after an explorer restart.
 bool maintain(Window& window);
