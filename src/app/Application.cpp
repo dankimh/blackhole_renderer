@@ -62,7 +62,8 @@ bool Application::init(const AppOptions& opts) {
     // Windows 11 24H2+ desktop: GPU swapchains of Progman children are never composed; push
     // frames through UpdateLayeredWindow instead (auto in wallpaper/lively modes).
     bool embedded = opts.mode == WindowMode::Wallpaper || opts.mode == WindowMode::Lively;
-    presentGdi_ = opts.presentMode == 2 || (opts.presentMode == 0 && embedded);
+    useD3d_ = opts.presentMode == 3 || (opts.presentMode == 0 && embedded);
+    presentGdi_ = useD3d_ || opts.presentMode == 2;
 #endif
     if (!headless) {
         WindowOptions wo;
@@ -108,7 +109,11 @@ bool Application::init(const AppOptions& opts) {
     }
     LOG_INFO("Renderer: %s | particles: %s | %s", renderer_->name(), renderer_->particleBackendName(),
              renderer_->deviceName().c_str());
-    if (presentGdi_) {
+    if (useD3d_) {
+        if (d3d_.init(window_.nativeHandle(), fbW_, fbH_)) LOG_INFO("Presenting through a D3D11 blt swapchain");
+        else { LOG_WARN("D3D11 presenter unavailable - falling back to UpdateLayeredWindow"); useD3d_ = false; }
+    }
+    if (presentGdi_ && !useD3d_) {
         presenter_.init(window_.nativeHandle());
         LOG_INFO("Presenting through UpdateLayeredWindow (GDI layered path)");
     }
@@ -373,7 +378,10 @@ bool Application::renderFrame() {
         std::vector<uint8_t> bgra;
         int w, h;
         bool topDown;
-        if (renderer_->readbackBGRA(bgra, w, h, topDown)) presenter_.present(bgra.data(), w, h, topDown);
+        if (renderer_->readbackBGRA(bgra, w, h, topDown)) {
+            if (useD3d_) d3d_.present(bgra.data(), w, h, topDown);
+            else presenter_.present(bgra.data(), w, h, topDown);
+        }
     }
 
     if (!pendingScreenshot_.empty()) {

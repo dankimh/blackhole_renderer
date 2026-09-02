@@ -37,6 +37,7 @@ set(BH_SOURCES
   src/platform/Input.cpp
   src/platform/Wallpaper.cpp
   src/platform/LayeredPresenter.cpp
+  src/platform/D3DPresenter.cpp
   src/util/Log.cpp
   src/util/File.cpp
   src/util/Image.cpp
@@ -94,6 +95,9 @@ if(NOT WIN32)
     target_compile_definitions(blackhole_render PRIVATE BH_HAS_X11=1)
     target_link_libraries(blackhole_render PRIVATE ${BH_X11_LIB})
   endif()
+endif()
+if(WIN32)
+  target_link_libraries(blackhole_render PRIVATE d3d11 dxgi)
 endif()
 if(MSVC)
   # Host-compiler-only flags; nvcc must not see them (it treats /W3 as an input file).

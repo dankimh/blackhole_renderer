@@ -6,6 +6,7 @@
 #include "platform/Clock.h"
 #include "platform/Input.h"
 #include "platform/LayeredPresenter.h"
+#include "platform/D3DPresenter.h"
 #include "platform/Window.h"
 #include "render/Camera.h"
 #include "render/IRenderer.h"
@@ -37,7 +38,7 @@ struct AppOptions {
     int samplesOverride = 0, stepsOverride = 0;
     int globalMouseOverride = -1;        // -1 keep setting
     int embedMode = 0;                   // --embed auto|plain|layered
-    int presentMode = 0;                 // --present auto|native|gdi (Windows wallpaper modes)
+    int presentMode = 0;                 // --present auto|native|gdi|d3d (Windows wallpaper modes)
     bool simCursor = false;              // synthetic orbiting cursor (headless demos)
     double fixedDt = 0.0;                // > 0: deterministic frame step (headless default 1/60)
     std::vector<std::pair<std::string, std::string>> overrides;   // --set name=value
@@ -73,7 +74,9 @@ private:
     Camera camera_;
     LivelyIpc ipc_;
     LayeredPresenter presenter_;
-    bool presentGdi_ = false;
+    D3DPresenter d3d_;
+    bool presentGdi_ = false;    // any offscreen presenter active
+    bool useD3d_ = false;
     std::unique_ptr<IRenderer> renderer_;
     int fbW_ = 0, fbH_ = 0, inW_ = 0, inH_ = 0;
     uint32_t frame_ = 0;
