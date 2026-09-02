@@ -58,6 +58,12 @@ bool Application::init(const AppOptions& opts) {
            : s.particleBackend == 2 ? ParticleBackend::Compute : ParticleBackend::Auto);
 
     bool headless = opts.mode == WindowMode::Headless;
+#ifdef _WIN32
+    // Windows 11 24H2+ desktop: GPU swapchains of Progman children are never composed; push
+    // frames through UpdateLayeredWindow instead (auto in wallpaper/lively modes).
+    bool embedded = opts.mode == WindowMode::Wallpaper || opts.mode == WindowMode::Lively;
+    presentGdi_ = opts.presentMode == 2 || (opts.presentMode == 0 && embedded);
+#endif
     if (!headless) {
         WindowOptions wo;
         wo.width = opts.width; wo.height = opts.height;
@@ -93,6 +99,7 @@ bool Application::init(const AppOptions& opts) {
     rc.particleBackend = pb;
     rc.vsync = opts.vsync;
     rc.debugUi = !headless;
+    rc.offscreenPresent = presentGdi_;
     rc.validation = opts.validation;
     rc.gpuIndex = opts.gpuIndex;
     if (!renderer_->init(rc)) {
@@ -101,6 +108,10 @@ bool Application::init(const AppOptions& opts) {
     }
     LOG_INFO("Renderer: %s | particles: %s | %s", renderer_->name(), renderer_->particleBackendName(),
              renderer_->deviceName().c_str());
+    if (presentGdi_) {
+        presenter_.init(window_.nativeHandle());
+        LOG_INFO("Presenting through UpdateLayeredWindow (GDI layered path)");
+    }
 
     camera_.aspect = (float)fbW_ / (float)fbH_;
     applySettings(true);
@@ -358,6 +369,12 @@ bool Application::renderFrame() {
     }
     renderer_->render(frame, ui);
     ++frame_;
+    if (presentGdi_) {
+        std::vector<uint8_t> bgra;
+        int w, h;
+        bool topDown;
+        if (renderer_->readbackBGRA(bgra, w, h, topDown)) presenter_.present(bgra.data(), w, h, topDown);
+    }
 
     if (!pendingScreenshot_.empty()) {
         saveScreenshot(pendingScreenshot_);

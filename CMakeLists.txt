@@ -36,6 +36,7 @@ set(BH_SOURCES
   src/platform/Window.cpp
   src/platform/Input.cpp
   src/platform/Wallpaper.cpp
+  src/platform/LayeredPresenter.cpp
   src/util/Log.cpp
   src/util/File.cpp
   src/util/Image.cpp

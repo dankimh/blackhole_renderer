@@ -22,6 +22,7 @@ public:
     void setParticleCount(uint32_t count) override;
     void render(const FrameInput& frame, const std::function<void()>& debugUi) override;
     bool readback(std::vector<uint8_t>& rgba, int& w, int& h) override;
+    bool readbackBGRA(std::vector<uint8_t>& bgra, int& w, int& h, bool& topDown) override;
     const char* name() const override { return "OpenGL 4.6 compute"; }
     const char* particleBackendName() const override { return particles_.backendName(); }
     std::string deviceName() const override { return device_; }
@@ -43,6 +44,7 @@ private:
     int winW_ = 0, winH_ = 0, inW_ = 0, inH_ = 0, bloomW_ = 0, bloomH_ = 0;
     bool accumValid_ = false;
     bool imgui_ = false;
+    bool offscreen_ = false;   // composite into outFbo_ instead of the window
     GLParticles particles_;
 };
 

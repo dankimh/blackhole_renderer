@@ -24,7 +24,8 @@ bool VkRenderer::init(const RendererConfig& cfg) {
 #if !BH_ENABLE_CUDA
     wantCuda = false;
 #endif
-    if (!ctx_.init(cfg.window, cfg.validation, cfg.gpuIndex, wantCuda)) return false;
+    swap_ = cfg.window && !cfg.offscreenPresent;
+    if (!ctx_.init(swap_ ? cfg.window : nullptr, cfg.validation, cfg.gpuIndex, wantCuda)) return false;
     spvDir_ = file::resource("shaders") / "spv";
     winW_ = cfg.windowWidth; winH_ = cfg.windowHeight;
     inW_ = cfg.internalWidth; inH_ = cfg.internalHeight;
@@ -299,7 +300,7 @@ void VkRenderer::destroyTargets() {
 bool VkRenderer::createPresentTargets() {
     destroyPresentTargets();
     VkFormat fmt;
-    if (cfg_.window) {
+    if (swap_) {
         if (!ctx_.createSwapchain(winW_, winH_, cfg_.vsync)) return false;
         winW_ = ctx_.swapExtent.width; winH_ = ctx_.swapExtent.height;
         fmt = ctx_.swapFormat;
@@ -314,7 +315,7 @@ bool VkRenderer::createPresentTargets() {
         att.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         att.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
         att.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        att.finalLayout = cfg_.window ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        att.finalLayout = swap_ ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
         VkAttachmentReference ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
         VkSubpassDescription sub{};
         sub.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -332,10 +333,10 @@ bool VkRenderer::createPresentTargets() {
         rci.dependencyCount = 1; rci.pDependencies = &dep;
         VK_CHECK(vkCreateRenderPass(ctx_.device, &rci, nullptr, &rpPresent_));
     }
-    size_t n = cfg_.window ? ctx_.swapViews.size() : 1;
+    size_t n = swap_ ? ctx_.swapViews.size() : 1;
     fbPresent_.resize(n);
     for (size_t i = 0; i < n; ++i) {
-        VkImageView view = cfg_.window ? ctx_.swapViews[i] : out_.view;
+        VkImageView view = swap_ ? ctx_.swapViews[i] : out_.view;
         VkFramebufferCreateInfo fci{VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
         fci.renderPass = rpPresent_;
         fci.attachmentCount = 1;
@@ -497,7 +498,7 @@ void VkRenderer::render(const FrameInput& frame, const std::function<void()>& de
     if (particleGen_ != particles_.generation()) updateDescriptors();
 
     uint32_t imageIndex = 0;
-    if (cfg_.window) {
+    if (swap_) {
         if (needSwapchain_) { resize(winW_, winH_, inW_, inH_); }
         VkResult r = vkAcquireNextImageKHR(ctx_.device, ctx_.swapchain, UINT64_MAX, semAcquire_, VK_NULL_HANDLE, &imageIndex);
         if (r == VK_ERROR_OUT_OF_DATE_KHR) { needSwapchain_ = true; return; }
@@ -528,7 +529,7 @@ void VkRenderer::render(const FrameInput& frame, const std::function<void()>& de
 
     std::vector<VkSemaphore> waits, signals;
     std::vector<VkPipelineStageFlags> waitStages;
-    if (cfg_.window) { waits.push_back(semAcquire_); waitStages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT); signals.push_back(semRender_); }
+    if (swap_) { waits.push_back(semAcquire_); waitStages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT); signals.push_back(semRender_); }
     if (cudaSync) {
         waits.push_back(particles_.semCudaDone());
         waitStages.push_back(VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
@@ -545,7 +546,7 @@ void VkRenderer::render(const FrameInput& frame, const std::function<void()>& de
     si.pSignalSemaphores = signals.data();
     VK_CHECK(vkQueueSubmit(ctx_.queue, 1, &si, fence_));
 
-    if (cfg_.window) {
+    if (swap_) {
         VkPresentInfoKHR pi{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
         pi.waitSemaphoreCount = 1;
         pi.pWaitSemaphores = &semRender_;
@@ -564,20 +565,20 @@ bool VkRenderer::readback(std::vector<uint8_t>& rgba, int& w, int& h) {
     vkWaitForFences(ctx_.device, 1, &fence_, VK_TRUE, UINT64_MAX);
     vkQueueWaitIdle(ctx_.queue);
     w = winW_; h = winH_;
-    VkImage src = cfg_.window ? ctx_.swapImages[lastImage_] : out_.image;
-    VkFormat fmt = cfg_.window ? ctx_.swapFormat : kOutFormat;
-    VkImageLayout layout = cfg_.window ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    VkImage src = swap_ ? ctx_.swapImages[lastImage_] : out_.image;
+    VkFormat fmt = swap_ ? ctx_.swapFormat : kOutFormat;
+    VkImageLayout layout = swap_ ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
     BufferRes staging = ctx_.createBuffer((VkDeviceSize)w * h * 4, VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     VkCommandBuffer cmd = ctx_.beginOneTime();
-    if (cfg_.window)
+    if (swap_)
         ctx_.transition(cmd, src, layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
                         VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_MEMORY_READ_BIT, VK_ACCESS_TRANSFER_READ_BIT);
     VkBufferImageCopy region{};
     region.imageSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
     region.imageExtent = {(uint32_t)w, (uint32_t)h, 1};
     vkCmdCopyImageToBuffer(cmd, src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, staging.buffer, 1, &region);
-    if (cfg_.window)
+    if (swap_)
         ctx_.transition(cmd, src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, layout, VK_PIPELINE_STAGE_TRANSFER_BIT,
                         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_MEMORY_READ_BIT);
     ctx_.endOneTime(cmd);
@@ -586,6 +587,13 @@ bool VkRenderer::readback(std::vector<uint8_t>& rgba, int& w, int& h) {
     ctx_.destroy(staging);
     if (fmt == VK_FORMAT_B8G8R8A8_UNORM || fmt == VK_FORMAT_B8G8R8A8_SRGB)
         for (size_t i = 0; i < rgba.size(); i += 4) std::swap(rgba[i], rgba[i + 2]);
+    return true;
+}
+
+bool VkRenderer::readbackBGRA(std::vector<uint8_t>& bgra, int& w, int& h, bool& topDown) {
+    if (!readback(bgra, w, h)) return false;   // RGBA, row 0 = top
+    topDown = true;
+    for (size_t i = 0; i < bgra.size(); i += 4) std::swap(bgra[i], bgra[i + 2]);
     return true;
 }
 

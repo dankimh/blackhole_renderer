@@ -17,6 +17,7 @@ public:
     void setParticleCount(uint32_t count) override;
     void render(const FrameInput& frame, const std::function<void()>& debugUi) override;
     bool readback(std::vector<uint8_t>& rgba, int& w, int& h) override;
+    bool readbackBGRA(std::vector<uint8_t>& bgra, int& w, int& h, bool& topDown) override;
     const char* name() const override { return "Vulkan 1.1 compute"; }
     const char* particleBackendName() const override { return particles_.backendName(); }
     std::string deviceName() const override { return ctx_.deviceName; }
@@ -59,6 +60,7 @@ private:
     int winW_ = 0, winH_ = 0, inW_ = 0, inH_ = 0, bloomW_ = 0, bloomH_ = 0;
     uint32_t lastImage_ = 0, particleGen_ = 0;
     bool accumValid_ = false, imgui_ = false, needSwapchain_ = false;
+    bool swap_ = false;   // present through a swapchain (false: offscreen image + readback)
 };
 
 }  // namespace bh

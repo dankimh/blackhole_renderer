@@ -18,6 +18,7 @@ GLRenderer::~GLRenderer() { shutdown(); }
 
 bool GLRenderer::init(const RendererConfig& cfg) {
     cfg_ = cfg;
+    offscreen_ = !cfg.window || cfg.offscreenPresent;
     if (cfg.window) {
         glfwMakeContextCurrent(cfg.window);
         glfwSwapInterval(cfg.vsync ? 1 : 0);
@@ -96,7 +97,7 @@ bool GLRenderer::createTargets() {
         LOG_ERROR("HDR framebuffer incomplete");
         return false;
     }
-    if (!cfg_.window) {
+    if (offscreen_) {
         makeTex(outTex_, GL_RGBA8, winW_, winH_);
         glCreateFramebuffers(1, &outFbo_);
         glNamedFramebufferTexture(outFbo_, GL_COLOR_ATTACHMENT0, outTex_, 0);
@@ -192,7 +193,7 @@ void GLRenderer::render(const FrameInput& frame, const std::function<void()>& de
     else glClearTexImage(bloomA_, 0, GL_RGBA, GL_FLOAT, nullptr);
 
     // 5. composite / tonemap to the window (or offscreen target)
-    glBindFramebuffer(GL_FRAMEBUFFER, cfg_.window ? 0 : outFbo_);
+    glBindFramebuffer(GL_FRAMEBUFFER, offscreen_ ? outFbo_ : 0);
     glViewport(0, 0, winW_, winH_);
     glUseProgram(progComposite_);
     glBindTextureUnit(5, hdrTex_);
@@ -203,20 +204,32 @@ void GLRenderer::render(const FrameInput& frame, const std::function<void()>& de
 #if BH_ENABLE_IMGUI
     if (imgui_) ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 #endif
-    if (cfg_.window) glfwSwapBuffers(cfg_.window);
-    else glFinish();
+    if (!offscreen_) glfwSwapBuffers(cfg_.window);
+    else if (!cfg_.window) glFinish();
 }
 
 bool GLRenderer::readback(std::vector<uint8_t>& rgba, int& w, int& h) {
     w = winW_; h = winH_;
     rgba.resize((size_t)w * h * 4);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, cfg_.window ? 0 : outFbo_);
-    glReadBuffer(cfg_.window ? GL_FRONT : GL_COLOR_ATTACHMENT0);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, offscreen_ ? outFbo_ : 0);
+    glReadBuffer(offscreen_ ? GL_COLOR_ATTACHMENT0 : GL_FRONT);
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, rgba.data());
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
     image::flipVertical(rgba, w, h);
     return !gl::checkErrors("readback");
+}
+
+bool GLRenderer::readbackBGRA(std::vector<uint8_t>& bgra, int& w, int& h, bool& topDown) {
+    w = winW_; h = winH_;
+    topDown = false;   // GL rows are bottom-up
+    bgra.resize((size_t)w * h * 4);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, offscreen_ ? outFbo_ : 0);
+    glReadBuffer(offscreen_ ? GL_COLOR_ATTACHMENT0 : GL_FRONT);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, w, h, GL_BGRA, GL_UNSIGNED_BYTE, bgra.data());
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    return true;
 }
 
 void GLRenderer::shutdown() {

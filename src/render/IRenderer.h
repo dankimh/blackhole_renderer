@@ -23,6 +23,7 @@ struct RendererConfig {
     bool vsync = false;
     bool debugUi = false;            // Dear ImGui overlay
     bool validation = false;         // Vulkan validation layers / GL debug output
+    bool offscreenPresent = false;   // render to an offscreen target, never swap; caller reads back & presents
     int gpuIndex = 0;                // headless EGL device / Vulkan physical device index
 };
 
@@ -39,6 +40,8 @@ public:
     virtual void render(const FrameInput& frame, const std::function<void()>& debugUi) = 0;
     /// Copy the last presented image (RGBA8, row 0 = top).
     virtual bool readback(std::vector<uint8_t>& rgba, int& w, int& h) = 0;
+    /// Fast path for LayeredPresenter: BGRA8, `topDown` reports the row order (no flip performed).
+    virtual bool readbackBGRA(std::vector<uint8_t>& bgra, int& w, int& h, bool& topDown) = 0;
     virtual const char* name() const = 0;
     virtual const char* particleBackendName() const = 0;
     virtual std::string deviceName() const = 0;
