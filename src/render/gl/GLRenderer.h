@@ -4,9 +4,12 @@
 #include "render/gl/GLParticles.h"
 #include <filesystem>
 #include <memory>
+#if BH_ENABLE_HEADLESS && !defined(_WIN32)
+#include "render/gl/EglContext.h"
+#define BH_GL_HAS_EGL 1
+#endif
 
 namespace bh {
-class EglContext;
 
 /// OpenGL 4.6 backend: compute-shader ray marcher + particle points + bloom + composite.
 class GLRenderer : public IRenderer {
@@ -29,7 +32,9 @@ private:
     void bloomPass(const FrameInput& frame);
 
     RendererConfig cfg_;
+#if BH_GL_HAS_EGL
     std::unique_ptr<EglContext> egl_;
+#endif
     std::filesystem::path shaderDir_;
     std::string device_;
     GLuint progBlackhole_ = 0, progBloom_ = 0, progComposite_ = 0, progParticles_ = 0;

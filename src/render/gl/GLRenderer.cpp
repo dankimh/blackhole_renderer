@@ -5,9 +5,6 @@
 #include "util/Log.h"
 #include <GLFW/glfw3.h>
 #include <algorithm>
-#if BH_ENABLE_HEADLESS && !defined(_WIN32)
-#include "render/gl/EglContext.h"
-#endif
 #if BH_ENABLE_IMGUI
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
@@ -26,7 +23,7 @@ bool GLRenderer::init(const RendererConfig& cfg) {
         glfwSwapInterval(cfg.vsync ? 1 : 0);
         if (!gl::load((gl::GetProcFn)glfwGetProcAddress)) return false;
     } else {
-#if BH_ENABLE_HEADLESS && !defined(_WIN32)
+#if BH_GL_HAS_EGL
         egl_ = std::make_unique<EglContext>();
         if (!egl_->create(0)) return false;
         if (!gl::load(EglContext::getProcAddress)) return false;
@@ -241,7 +238,7 @@ void GLRenderer::shutdown() {
     for (GLuint b : bufs) if (b) glDeleteBuffers(1, &b);
     uboRender_ = uboParticle_ = uboBloom_ = 0;
     if (vao_) { glDeleteVertexArrays(1, &vao_); vao_ = 0; }
-#if BH_ENABLE_HEADLESS && !defined(_WIN32)
+#if BH_GL_HAS_EGL
     egl_.reset();
 #endif
 }
