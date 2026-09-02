@@ -4,9 +4,9 @@
 
 | Component | Notes |
 |-----------|-------|
-| Visual Studio 2022 | "Desktop development with C++" workload (MSVC v143, Windows 10/11 SDK) |
-| CMake 3.22+ | bundled with VS or from cmake.org |
-| CUDA Toolkit **12.x** (12.4 - 12.9) | TITAN X (Maxwell sm_52) / TITAN X Pascal & Xp (sm_61) are **dropped in CUDA 13**, so stay on 12.x. Install after Visual Studio so the VS integration is registered. |
+| Visual Studio 2026 | "Desktop development with C++" workload (MSVC v145 toolset, Windows 10/11 SDK). CMake 3.22 does not know the "Visual Studio 18 2026" generator - use the CMake bundled with VS 2026 or CMake 4.x from cmake.org. |
+| CMake 4.1+ | bundled with VS 2026 (or from cmake.org); required for the VS 2026 generator |
+| CUDA Toolkit **12.x** (12.8 or 12.9) | TITAN X (Maxwell sm_52) / TITAN X Pascal & Xp (sm_61) are **dropped in CUDA 13**, so stay on 12.x. Install after Visual Studio so the VS integration is registered. Older 12.x releases do not recognise the VS 2026 (v145) toolset. |
 | NVIDIA driver | Any recent Game Ready / Studio driver (OpenGL 4.6 + Vulkan 1.1 support) |
 | Vulkan SDK (optional) | Only needed to recompile SPIR-V (`glslc`). Pre-compiled `shaders/spv/*.spv` are committed, so it is optional. |
 | Git | FetchContent downloads GLFW, glm, nlohmann/json, volk, Vulkan-Headers (if no SDK) and Dear ImGui on first configure. |
