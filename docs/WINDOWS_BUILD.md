@@ -13,7 +13,22 @@
 
 ## Build
 
-### Option A - Ninja (recommended with VS 2026 + CUDA)
+### CUDA 12.x and the VS 2026 toolset (read first)
+
+CUDA 12.9's `cudafe++` crashes (`died with status 0xC0000005`) when the host compiler is
+MSVC 14.5x (VS 2026, `v145`). `-allow-unsupported-compiler` does not help. Install the
+**v143 (VS 2022) toolset** inside VS 2026 and build with it:
+
+1. Visual Studio Installer -> Modify -> *Individual components* -> check
+   **"MSVC v143 - VS 2022 C++ x64/x86 build tools (Latest)"** -> Modify.
+2. `cmake --preset windows-msvc-v143 && cmake --build --preset windows-msvc-v143`
+   (-> `build-win-v143\Release\blackhole_render.exe`).
+
+The preset passes `toolset v143` so every translation unit (C++ and CUDA) uses the 14.4x
+compiler that CUDA 12.x supports. The `windows-msvc` / `windows-ninja` presets use the
+default v145 toolset and only work once NVIDIA ships a CUDA release that supports it.
+
+### Option A - Ninja (VS 2026 default toolset; needs a CUDA that supports v145)
 
 Open **"x64 Native Tools Command Prompt for VS 2026"** (or *Developer PowerShell for VS
 2026*) so that `cl.exe` is on the PATH, then:

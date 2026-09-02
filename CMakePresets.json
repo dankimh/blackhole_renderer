@@ -25,6 +25,13 @@
       }
     },
     {
+      "name": "windows-msvc-v143",
+      "displayName": "Windows x64 (VS 2026 IDE + v143 toolset, CUDA 12.x)",
+      "inherits": "windows-msvc",
+      "toolset": "v143,host=x64",
+      "binaryDir": "${sourceDir}/build-win-v143"
+    },
+    {
       "name": "windows-ninja",
       "displayName": "Windows x64 (Ninja + MSVC + CUDA, no VS/CUDA MSBuild integration needed)",
       "generator": "Ninja",
@@ -73,6 +80,11 @@
     {
       "name": "windows-msvc",
       "configurePreset": "windows-msvc",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-msvc-v143",
+      "configurePreset": "windows-msvc-v143",
       "configuration": "Release"
     },
     {
