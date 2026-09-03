@@ -42,7 +42,8 @@ static void usage() {
         "  --sim-cursor            synthetic orbiting cursor (particle demo / headless)\n"
         "  --dump-desktop          print the desktop window tree (compare with a working Lively wallpaper)\n"
         "  --embed auto|plain|layered|bottom  --wallpaper attach method (bottom = z-order fallback)\n"
-        "  --present auto|native|gdi|d3d  frame presentation (auto: d3d blt swapchain when embedded)\n"
+        "  --present auto|native|gdi|d3d|blt  frame presentation (auto: d3d swapchain when embedded)\n"
+        "  --inner-child           present into a plain child window inside the layered one (Lively layout)\n"
         "  --set name=value        override any LivelyProperties.json value (repeatable)\n"
         "  --validation            GL debug output / Vulkan validation layers\n"
         "  --log debug|info|warn\n"
@@ -101,7 +102,8 @@ int main(int argc, char** argv) {
         else if (a == "--global-mouse") o.globalMouseOverride = std::atoi(next(i).c_str());
         else if (a == "--debug") o.debugUi = true;
         else if (a == "--sim-cursor") o.simCursor = true;
-        else if (a == "--present") { std::string v = next(i); o.presentMode = v == "native" ? 1 : v == "gdi" ? 2 : v == "d3d" ? 3 : 0; }
+        else if (a == "--present") { std::string v = next(i); o.presentMode = v == "native" ? 1 : v == "gdi" ? 2 : v == "d3d" ? 3 : v == "blt" ? 4 : 0; }
+        else if (a == "--inner-child") o.innerChild = true;
         else if (a == "--embed") { std::string v = next(i); o.embedMode = v == "plain" ? 1 : v == "layered" ? 2 : v == "bottom" ? 3 : 0; }
         else if (a == "--set") {
             std::string v = next(i);

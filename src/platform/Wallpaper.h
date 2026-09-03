@@ -11,6 +11,9 @@ void setEmbedMode(int mode);
 bool maintain(Window& window);
 /// Log the desktop window hierarchy (Progman / WorkerW / wallpaper hosts). Windows only.
 void dumpDesktop();
+/// Windows: create a plain (non-layered) child window filling `window`, like Lively's WebView2 host
+/// child. Returns its HWND (as void*) or null. Presenters can target it instead of the layered window.
+void* createInnerChild(Window& window);
 /// Remove from taskbar / alt-tab (Windows only, harmless elsewhere).
 void hideFromTaskbar(Window& window);
 /// Primary monitor size in pixels.

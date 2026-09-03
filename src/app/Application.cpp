@@ -64,7 +64,8 @@ bool Application::init(const AppOptions& opts) {
     bool embedded = opts.mode == WindowMode::Wallpaper || opts.mode == WindowMode::Lively;
     if (opts.embedMode == 3 && opts.presentMode == 0) embedded = false;   // top-level: native swap works
     useD3d_ = opts.presentMode == 3 || (opts.presentMode == 0 && embedded);
-    presentGdi_ = useD3d_ || opts.presentMode == 2;
+    useBlt_ = opts.presentMode == 4;
+    presentGdi_ = useD3d_ || useBlt_ || opts.presentMode == 2;
 #endif
     if (!headless) {
         WindowOptions wo;
@@ -112,13 +113,17 @@ bool Application::init(const AppOptions& opts) {
     }
     LOG_INFO("Renderer: %s | particles: %s | %s", renderer_->name(), renderer_->particleBackendName(),
              renderer_->deviceName().c_str());
+    presentHwnd_ = window_.nativeHandle();
+    if (presentGdi_ && opts.innerChild) {
+        if (void* inner = wallpaper::createInnerChild(window_)) presentHwnd_ = inner;
+    }
     if (useD3d_) {
-        if (d3d_.init(window_.nativeHandle(), fbW_, fbH_)) LOG_INFO("Presenting through a D3D11 blt swapchain");
+        if (d3d_.init(presentHwnd_, fbW_, fbH_)) LOG_INFO("Presenting through a D3D11 blt swapchain");
         else { LOG_WARN("D3D11 presenter unavailable - falling back to UpdateLayeredWindow"); useD3d_ = false; }
     }
     if (presentGdi_ && !useD3d_) {
-        presenter_.init(window_.nativeHandle());
-        LOG_INFO("Presenting through UpdateLayeredWindow (GDI layered path)");
+        presenter_.init(presentHwnd_, useBlt_);
+        LOG_INFO("Presenting through %s", useBlt_ ? "GDI BitBlt into the window DC" : "UpdateLayeredWindow");
     }
 
     camera_.aspect = (float)fbW_ / (float)fbH_;

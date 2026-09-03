@@ -9,7 +9,9 @@ namespace bh {
 class LayeredPresenter {
 public:
     ~LayeredPresenter();
-    bool init(void* hwnd);
+    /// blt = true: paint with BitBlt into the window DC (for SetLayeredWindowAttributes windows);
+    /// false: UpdateLayeredWindow (window must not be in attributes mode).
+    bool init(void* hwnd, bool blt = false);
     /// `bgra` is width*height*4 bytes. topDown = row 0 is the top of the image.
     bool present(const uint8_t* bgra, int width, int height, bool topDown);
     void shutdown();
@@ -22,5 +24,6 @@ private:
     int w_ = 0, h_ = 0;
     bool topDown_ = true;
     int failures_ = 0;
+    bool blt_ = false;
 };
 }  // namespace bh

@@ -9,9 +9,11 @@ namespace bh {
 
 LayeredPresenter::~LayeredPresenter() { shutdown(); }
 
-bool LayeredPresenter::init(void* hwnd) {
+bool LayeredPresenter::init(void* hwnd, bool blt) {
     hwnd_ = hwnd;
+    blt_ = blt;
 #ifdef _WIN32
+    if (blt) return true;   // keep whatever layered state the embedder set
     return ensureLayered(true);
 #else
     return false;
@@ -61,6 +63,15 @@ bool LayeredPresenter::present(const uint8_t* bgra, int width, int height, bool 
         LOG_INFO("Layered presenter: %dx%d DIB", width, height);
     }
     std::memcpy(bits_, bgra, (size_t)width * height * 4);
+
+    if (blt_) {
+        HDC dc = GetDC((HWND)hwnd_);
+        if (!dc) return false;
+        BOOL ok = BitBlt(dc, 0, 0, width, height, (HDC)memDc_, 0, 0, SRCCOPY);
+        ReleaseDC((HWND)hwnd_, dc);
+        if (!ok && failures_++ % 300 == 0) LOG_WARN("BitBlt to window failed (%lu)", GetLastError());
+        return ok != 0;
+    }
 
     POINT src{0, 0};
     SIZE size{width, height};

@@ -172,6 +172,32 @@ void dumpDesktop() {
 #endif
 }
 
+void* createInnerChild(Window& window) {
+#ifdef _WIN32
+    HWND outer = (HWND)window.nativeHandle();
+    if (!outer) return nullptr;
+    static bool registered = false;
+    if (!registered) {
+        WNDCLASSW wc{};
+        wc.lpfnWndProc = DefWindowProcW;
+        wc.hInstance = GetModuleHandleW(nullptr);
+        wc.lpszClassName = L"BlackholeInner";
+        wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+        RegisterClassW(&wc);
+        registered = true;
+    }
+    RECT rc{};
+    GetClientRect(outer, &rc);
+    HWND inner = CreateWindowExW(0, L"BlackholeInner", L"", WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS,
+                                 0, 0, rc.right, rc.bottom, outer, nullptr, GetModuleHandleW(nullptr), nullptr);
+    LOG_INFO("Inner presentation child %p (%ldx%ld)", (void*)inner, rc.right, rc.bottom);
+    return inner;
+#else
+    (void)window;
+    return nullptr;
+#endif
+}
+
 void setEmbedMode(int mode) {
 #ifdef _WIN32
     g_embedMode = mode;
