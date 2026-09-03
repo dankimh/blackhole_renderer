@@ -55,8 +55,8 @@ assets/, media/                assets/, media/
   to millions; simulated by CUDA or GLSL compute.
 - **Post** - half-resolution bloom, ACES tonemap, mouse parallax on the orbit camera.
 - **Wallpaper integration** - Lively `Type 0` app wallpaper (`--lively`), self-embedding
-  behind desktop icons without Lively (`--wallpaper`, WorkerW on Windows / desktop-type
-  window on X11), Lively player IPC on stdin (`{"Type":12,"Name":"samples","Value":8}`),
+  behind desktop icons without Lively (`--wallpaper`: layered child of Progman presented via
+  DirectComposition on Windows 11, WorkerW child on older Windows, desktop-type window on X11), Lively player IPC on stdin (`{"Type":12,"Name":"samples","Value":8}`),
   `LivelyProperties.json` hot reload, screenshot command, headless rendering for CI/previews.
 
 ## Build

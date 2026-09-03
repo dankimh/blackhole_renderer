@@ -103,6 +103,24 @@ Stop a `--wallpaper` instance from Task Manager or with `taskkill /im blackhole_
    file within 0.5 s. Set `"debug": true` for the live panel and press *Save* to write
    the current values back.
 
+## How the wallpaper is displayed (Windows 11 24H2+)
+
+Progman on current Windows 11 has `WS_EX_NOREDIRECTIONBITMAP`; the shell's own
+`SHELLDLL_DefView` and the `WorkerW` that paints the static wallpaper are its children. A
+wallpaper window must be a `WS_EX_LAYERED` (alpha 255) child of Progman, z-ordered below
+DefView and above WorkerW - **and its pixels must arrive through DirectComposition**. GL/Vulkan
+swapchains, GDI (`BitBlt`, `UpdateLayeredWindow`) and blt-model DXGI presents of such a child
+are never composed. So in `--wallpaper` / `--lively` mode the app:
+
+1. creates the visible window without a GL pixel format (`GLFW_NO_API`) and keeps the OpenGL
+   context on a hidden helper window;
+2. renders the frame offscreen (GL compute / Vulkan / CUDA as usual) and reads it back as BGRA;
+3. copies it into a flip-model composition swapchain bound to a DirectComposition visual whose
+   target is the wallpaper window (`src/platform/DCompPresenter.cpp`).
+
+`--present d3d|blt|gdi|native` keep the other paths for experiments; `--dump-desktop` prints the
+desktop window tree; `--embed bottom` is a last-resort top-level fallback (covers the icons).
+
 ## Troubleshooting
 
 * **Black window / "Shader compile failed"** - the driver must expose OpenGL 4.6 with
