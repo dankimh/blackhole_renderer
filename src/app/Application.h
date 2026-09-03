@@ -7,6 +7,7 @@
 #include "platform/Input.h"
 #include "platform/LayeredPresenter.h"
 #include "platform/D3DPresenter.h"
+#include "platform/DCompPresenter.h"
 #include "platform/Window.h"
 #include "render/Camera.h"
 #include "render/IRenderer.h"
@@ -38,7 +39,7 @@ struct AppOptions {
     int samplesOverride = 0, stepsOverride = 0;
     int globalMouseOverride = -1;        // -1 keep setting
     int embedMode = 0;                   // --embed auto|plain|layered
-    int presentMode = 0;                 // --present auto|native|gdi|d3d|blt (Windows wallpaper modes)
+    int presentMode = 0;                 // --present auto|native|gdi|d3d|blt|dcomp (auto = dcomp when embedded)
     bool innerChild = false;             // --inner-child: present into a plain child window (Lively layout)
     bool simCursor = false;              // synthetic orbiting cursor (headless demos)
     double fixedDt = 0.0;                // > 0: deterministic frame step (headless default 1/60)
@@ -76,6 +77,8 @@ private:
     LivelyIpc ipc_;
     LayeredPresenter presenter_;
     D3DPresenter d3d_;
+    DCompPresenter dcomp_;
+    bool useDComp_ = false;
     bool presentGdi_ = false;    // any offscreen presenter active
     bool useD3d_ = false;
     bool useBlt_ = false;

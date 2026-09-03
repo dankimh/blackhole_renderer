@@ -63,9 +63,10 @@ bool Application::init(const AppOptions& opts) {
     // frames through UpdateLayeredWindow instead (auto in wallpaper/lively modes).
     bool embedded = opts.mode == WindowMode::Wallpaper || opts.mode == WindowMode::Lively;
     if (opts.embedMode == 3 && opts.presentMode == 0) embedded = false;   // top-level: native swap works
-    useD3d_ = opts.presentMode == 3 || (opts.presentMode == 0 && embedded);
+    useDComp_ = opts.presentMode == 5 || (opts.presentMode == 0 && embedded);
+    useD3d_ = opts.presentMode == 3;
     useBlt_ = opts.presentMode == 4;
-    presentGdi_ = useD3d_ || useBlt_ || opts.presentMode == 2;
+    presentGdi_ = useDComp_ || useD3d_ || useBlt_ || opts.presentMode == 2;
 #endif
     if (!headless) {
         WindowOptions wo;
@@ -117,11 +118,15 @@ bool Application::init(const AppOptions& opts) {
     if (presentGdi_ && opts.innerChild) {
         if (void* inner = wallpaper::createInnerChild(window_)) presentHwnd_ = inner;
     }
+    if (useDComp_) {
+        if (dcomp_.init(presentHwnd_, fbW_, fbH_)) LOG_INFO("Presenting through DirectComposition");
+        else { LOG_WARN("DirectComposition unavailable - falling back to D3D11 blt"); useDComp_ = false; useD3d_ = true; }
+    }
     if (useD3d_) {
         if (d3d_.init(presentHwnd_, fbW_, fbH_)) LOG_INFO("Presenting through a D3D11 blt swapchain");
         else { LOG_WARN("D3D11 presenter unavailable - falling back to UpdateLayeredWindow"); useD3d_ = false; }
     }
-    if (presentGdi_ && !useD3d_) {
+    if (presentGdi_ && !useD3d_ && !useDComp_) {
         presenter_.init(presentHwnd_, useBlt_);
         LOG_INFO("Presenting through %s", useBlt_ ? "GDI BitBlt into the window DC" : "UpdateLayeredWindow");
     }
@@ -391,9 +396,10 @@ bool Application::renderFrame() {
                 uint64_t sum = 0;
                 for (size_t i = 0; i < bgra.size(); i += 4 * 97) sum += bgra[i] + bgra[i + 1] + bgra[i + 2];
                 LOG_INFO("frame %u: %dx%d, mean brightness %.1f/255 (presenter %s)", frame_, w, h,
-                         (double)sum / (double)(bgra.size() / (4 * 97)) / 3.0, useD3d_ ? "d3d" : "gdi");
+                         (double)sum / (double)(bgra.size() / (4 * 97)) / 3.0, useDComp_ ? "dcomp" : useD3d_ ? "d3d" : "gdi");
             }
-            if (useD3d_) d3d_.present(bgra.data(), w, h, topDown);
+            if (useDComp_) dcomp_.present(bgra.data(), w, h, topDown);
+            else if (useD3d_) d3d_.present(bgra.data(), w, h, topDown);
             else presenter_.present(bgra.data(), w, h, topDown);
         }
     }
